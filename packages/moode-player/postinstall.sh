@@ -735,8 +735,47 @@ function on_upgrade() {
 	# Introduced in r1036
 	dpkg --compare-versions $VERSION lt "10.3.6-1moode1"
 	if [ $? -eq 0 ]; then
-		echo "There are no postinstall updates for 10.3.6"
-		#echo "** Apply postinstall updates for 10.3.6"
+		#echo "There are no postinstall updates for 10.3.6"
+		echo "** Apply postinstall updates for 10.3.6"
+		# Refactor Radio Cover feature
+		# - Drop stand-alone iTunes search option
+		sqlite3 $SQLDB "UPDATE cfg_system SET value='RESERVED_42' WHERE param='itunes_query_timeout'"
+		VALUE=$(sqlite3 $SQLDB "SELECT value FROM cfg_system WHERE param='radio_covers'")
+		if [ "$VALUE" != "No" ]; then
+			sqlite3 $SQLDB "UPDATE cfg_system SET value='Yes' WHERE param='radio_covers'"
+		fi
+		# - Update settings
+		truncate /etc/radiocover-plus/config.txt --size 0
+		cat <<- EOF > /etc/radiocover-plus/config.txt
+		# Search providers
+		iTunes=True
+		Deezer=True
+		MusicBrainz=True
+		Spotify=False
+		LastFM=False
+		Discogs=False
+		TheAudioDB=False
+		# Access tokens
+		SPOTIFY_CLIENT_ID=
+		SPOTIFY_CLIENT_SECRET=
+		LASTFM_API_KEY=
+		DISCOGS_TOKEN=
+		THEAUDIODB_API_KEY=
+		# Search settings
+		MIN_SIMILARITY=0.75
+		MIN_SIMILARITY_ITUNES=0.90
+		FAST_DEADLINE_S=2.0
+		TOTAL_DEADLINE_S=3.0
+		REQUEST_TIMEOUT=3.0
+		EARLY_STOP_SCORE=5.0
+		MAX_SIZE_PX=2000
+		MIN_SIZE_PX=100
+		# Logging
+		LOG_LEVEL=ERROR
+		EOF
+		# Refactor filename: bt-pairing-agent.py -> bt_pairing_agent.py
+		rm /var/www/daemon/bt-pairing-agent.py
+		sed -i 's/bt-pairing-agent.py/bt_pairing_agent.py/' /etc/systemd/system/bt-agent.service
 	fi
 
     # --------------------------------------------------------------------------
